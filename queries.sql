@@ -46,7 +46,7 @@ CREATE TABLE summary_report(
 	last_name varchar(45),
 	email varchar(50),
 	preferred_category varchar(45),
-	active varchar(5)
+	active varchar(10)
 );
 
 -- TO VIEW EMPTY SUMMARY REPORT TABLE
@@ -113,25 +113,11 @@ SELECT COALESCE("action",0) + COALESCE("animation",0) + COALESCE("children",0)
 -- INSERT INTO rental(rental_date, inventory_id, customer_id, return_date, staff_id, last_update)
 -- 	VALUES (current_timestamp, 4020, 1, current_timestamp, 2, current_timestamp)
 
---------------------------------
--- D. TRANSFORMATION FUNCTION --
---------------------------------																		<-FIX
+----------------------------------------------------
+-- D & E. TRIGGER FUNCTIONS & DATA TRANSFORMATION --
+----------------------------------------------------
 
--- CHANGE 1 or 0 to "Active" or "Not Active"
-CREATE OR REPLACE FUNCTION transform_active()
-	RETURNS VARCHAR
-	LANGUAGE PLPGSQL
-	AS
-$$
-DECLARE
-BEGIN
-END;
-$$;
-
---------------------------
--- E. TRIGGER FUNCTIONS --
---------------------------
-
+-- TRANSFORMS THE COLUMN ACTIVE FROM AN INT TO A VARCHAR. 1 = ACTIVE , 0 = INACTIVE
 -- REFRESHES SUMMARY_REPORT TABLE
 CREATE OR REPLACE FUNCTION summary_trigger()
 	RETURNS TRIGGER
@@ -141,7 +127,13 @@ $$
 BEGIN
 	DELETE FROM summary_report;
 	INSERT INTO summary_report (
-		SELECT customer_id, first_name, last_name, email, preferred_film_category, active
+		SELECT customer_id, first_name, last_name, email, preferred_film_category,
+		CASE
+			WHEN active = 1
+				THEN 'Active'
+			WHEN active = 0
+				THEN 'Inactive'
+		END
 		FROM
 			detailed_report
 		ORDER BY
@@ -311,8 +303,8 @@ END;
 $$;
 
 -- 
--- CALL refresh_reports();
+CALL refresh_reports();
 
 
 SELECT * FROM detailed_report;
--- SELECT * FROM summary_report;
+SELECT * FROM summary_report;

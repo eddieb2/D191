@@ -134,9 +134,14 @@ SELECT customer_id, COALESCE("action",0) + COALESCE("animation",0) + COALESCE("c
 	FROM detailed_report;
 
 -- Test Insert: This verifies that the triggers function properly by refreshing the detailed and summary reports with the new data.
+-- SELECT * FROM detailed_report;
+-- SELECT * FROM summary_report;
+
 -- INSERT INTO rental(rental_date, inventory_id, customer_id, return_date, staff_id, last_update)
 -- 	VALUES (current_timestamp, 4020, 1, current_timestamp, 2, current_timestamp)
 
+-- SELECT * FROM detailed_report;
+-- SELECT * FROM summary_report;
 ----------------------------------------------------
 -- D & E1. TRIGGER FUNCTIONS & DATA TRANSFORMATION --
 ----------------------------------------------------
@@ -329,7 +334,7 @@ END;
 $$;
 
 -- EXECUTE TO REFRESH REPORTS
-CALL refresh_reports();
+-- CALL refresh_reports();
 
-SELECT * FROM detailed_report;
-SELECT * FROM summary_report;
+-- SELECT * FROM detailed_report;
+-- SELECT * FROM summary_report;

@@ -17,7 +17,8 @@ CREATE TABLE customer_rental_categories AS
 			ON f.film_id = fc.film_id
 		JOIN category cat
 			ON fc.category_id = cat.category_id
-		ORDER BY cat.name;
+		ORDER BY 
+			cat.name;
 
 -- TO VIEW CUSTOMER RENTAL CATEGORIES TABLE
 -- SELECT * FROM customer_rental_categories;
@@ -34,11 +35,11 @@ CREATE TABLE preferred_category AS
 -- TO VIEW PREFERRED CATEGORIES TABLE
 -- SELECT * FROM preferred_category;
 
--------------------------------------------------------
--- B. Creates a new empty table for the summary report.
--------------------------------------------------------
+---------
+-- B1. --
+---------
 
--- Summary Report: 
+-- Summary Report: Creates an empty table
 DROP TABLE IF EXISTS summary_report;
 CREATE TABLE summary_report(
 	customer_id integer,
@@ -52,11 +53,13 @@ CREATE TABLE summary_report(
 -- TO VIEW EMPTY SUMMARY REPORT TABLE
 -- SELECT * FROM summary_report;
 
----------------------------------------------------------------------------------------------------
--- C & D. Creates a table for the detailed report, extracts the necessary data and transforms the data.
----------------------------------------------------------------------------------------------------
+-- ** The detailed report is created in the section below. **
 
--- Detailed Report: 
+--------------
+-- B2. & C. --
+--------------
+
+-- Detailed Report: Creates a table for the detailed report, and extracts the necessary data on the fly.
 DROP TABLE IF EXISTS detailed_report;
 CREATE TABLE detailed_report AS 
 	SELECT 
@@ -100,25 +103,46 @@ CREATE TABLE detailed_report AS
 -- TO VIEW DETAILED REPORT TABLE
 -- SELECT * FROM detailed_report;
 
--- Data Verification: 																					<-FIX
-SELECT COALESCE("action",0) + COALESCE("animation",0) + COALESCE("children",0)
+-- Data Verification:
+-- Verfies that the total rentals in the database match the total rentals in the detailed report for all customers.
+SELECT COUNT(r.rental_id) AS ACTUAL_TOTAL_RENTALS, COUNT(d.total_rentals) AS D_REPORT_TOTAL_RENTALS
+	FROM 
+		rental AS r
+	JOIN detailed_report AS d
+		ON r.customer_id = d.customer_id;
+		
+-- Verifies that the total rentals in the database match the total rentals in the detailed report for a specified customer.
+SELECT r.customer_id AS db_cid, COUNT(*) AS actual_total_rentals, d.customer_id AS report_cid, d.total_rentals AS report_total_rentals
+	FROM
+		rental AS r
+	JOIN detailed_report AS d
+		ON r.customer_id = d.customer_id
+	WHERE 
+		r.customer_id = 1
+	GROUP BY
+		d.total_rentals,
+		r.customer_id,
+		d.customer_id;
+		
+-- Verfies that the sum of all category columns in detailed_report equal the "total_rentals" column for each customer.  
+SELECT customer_id, COALESCE("action",0) + COALESCE("animation",0) + COALESCE("children",0)
 + COALESCE("classics",0) + COALESCE("comedy",0) + COALESCE("documentary",0) 
 + COALESCE("drama",0)+ COALESCE("family",0) + COALESCE("foreign",0)
 + COALESCE("games",0)+ COALESCE("horror",0) + COALESCE("music",0)
 + COALESCE("new",0) + COALESCE("sci_fi",0) + COALESCE("sports",0)
 + COALESCE("travel",0) AS total_rentals_check, total_rentals 
 	FROM detailed_report;
-	
--- Test Insert: Shows 																					<-FIX
+
+-- Test Insert: This verifies that the triggers function properly by refreshing the detailed and summary reports with the new data.
 -- INSERT INTO rental(rental_date, inventory_id, customer_id, return_date, staff_id, last_update)
 -- 	VALUES (current_timestamp, 4020, 1, current_timestamp, 2, current_timestamp)
 
 ----------------------------------------------------
--- D & E. TRIGGER FUNCTIONS & DATA TRANSFORMATION --
+-- D & E1. TRIGGER FUNCTIONS & DATA TRANSFORMATION --
 ----------------------------------------------------
 
--- TRANSFORMS THE COLUMN ACTIVE FROM AN INT TO A VARCHAR. 1 = ACTIVE , 0 = INACTIVE
--- REFRESHES SUMMARY_REPORT TABLE
+-- Refreshes/updates the summary report when new data is added to the detailed report
+-- ***** TRANSFORMS THE COLUMN "ACTIVE" FROM AN INT TO A VARCHAR. 1 = ACTIVE , 0 = INACTIVE (Lines 131-136) *******
 CREATE OR REPLACE FUNCTION summary_trigger()
 	RETURNS TRIGGER
 	LANGUAGE PLPGSQL
@@ -145,7 +169,7 @@ BEGIN
 END; 
 $$;
 
--- REFRESHES CUSTOMER_RENTAL_CATEGORIES TABLE
+-- Refreshes/updates the customer_rental_categories table when a new rental is inserted into the database.
 CREATE OR REPLACE FUNCTION customer_rental_categories_trigger()
 	RETURNS TRIGGER
 	LANGUAGE PLPGSQL
@@ -175,7 +199,7 @@ BEGIN
 END;
 $$;
 
--- REFRESHES PREFERRED_CATEGORY TABLE
+-- Refreshes/updates the preferred_category table when a new rental is inserted into the database.
 CREATE OR REPLACE FUNCTION preferred_category_trigger()
 	RETURNS TRIGGER
 	LANGUAGE PLPGSQL
@@ -197,10 +221,10 @@ END;
 $$;
 
 -------------------------
--- E. TRIGGER CREATION --
+-- E2. TRIGGER CREATION --
 -------------------------
 
--- CREATES CUSTOMER RENTAL CATEGORIES TRIGGER
+-- CREATES CUSTOMER RENTAL CATEGORIES
 DROP TRIGGER IF EXISTS crc_table_trigger ON rental;
 
 CREATE TRIGGER crc_table_trigger
@@ -209,7 +233,7 @@ ON rental
 FOR EACH STATEMENT
 EXECUTE PROCEDURE customer_rental_categories_trigger();
 
--- CREATES PREFERRED CATEGORY TRIGGER CREATION
+-- CREATES PREFERRED CATEGORY TRIGGER
 DROP TRIGGER IF EXISTS pc_table_trigger ON rental;
 
 CREATE TRIGGER pc_table_trigger
@@ -218,7 +242,7 @@ ON rental
 FOR EACH STATEMENT
 EXECUTE PROCEDURE preferred_category_trigger();
 
--- CREATES SUMMARY TRIGGER CREATION
+-- CREATES SUMMARY TRIGGER
 DROP TRIGGER IF EXISTS summary_report_refresh ON detailed_report;
 
 CREATE TRIGGER summary_report_refresh
@@ -231,7 +255,9 @@ EXECUTE PROCEDURE summary_trigger();
 -- F. STORED PROCEDURE --
 -------------------------
 
--- 																								<- FIX
+-- This stored procedure will clear all the data from the detailed report and update the report based on any new changes to the database. 
+-- Upon insertion of the new data into the detailed report, the "summary_report_refresh" trigger will fire, subsequently clearing and updating the summary report's data.
+-- F1. This stored procedure should be executed prior to emailing customers their customized "new release" marketing. Additionally, this process could be automated using pg_cron job scheduler. 
 CREATE OR REPLACE PROCEDURE refresh_reports()
 LANGUAGE PLPGSQL
 AS $$
@@ -302,9 +328,8 @@ BEGIN
 END; 
 $$;
 
--- 
+-- EXECUTE TO REFRESH REPORTS
 CALL refresh_reports();
-
 
 SELECT * FROM detailed_report;
 SELECT * FROM summary_report;

@@ -99,6 +99,25 @@ CREATE TABLE detailed_report AS
 		c.active
 	ORDER BY
 		c.customer_id;
+		
+-- Changes the category columns data type from bigint to int		
+ALTER TABLE detailed_report ALTER COLUMN "action" TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN animation TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN children TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN classics TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN comedy TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN documentary TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN drama TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN "family" TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN "foreign" TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN games TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN horror TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN music TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN "new" TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN sci_fi TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN sports TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN travel TYPE int;
+ALTER TABLE detailed_report ALTER COLUMN total_rentals TYPE int;
 
 -- TO VIEW DETAILED REPORT TABLE
 -- SELECT * FROM detailed_report;
@@ -338,3 +357,4 @@ $$;
 
 -- SELECT * FROM detailed_report;
 -- SELECT * FROM summary_report;
+

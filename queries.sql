@@ -1,5 +1,22 @@
--- Business Question: What is the most common film category rented by each customer?
-------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+
+-- Business Question: 
+---------------------
+-- How do we keep our customers returning? 
+-- Using these reports we will be able to provide our customers with marketing information related to their favorite film categories.
+
+-- Programming Environment
+---------------------------
+-- Consists of the following: 
+
+-- Operating System: Windows 10
+-- Database Language: SQL
+-- DBMS: PostgreSQL 12
+-- Database: dvdrentals
+
+-------------------------------------------------------------------------------------------------------------------------
+
+-- -- Two tables need to be created in order to find each customer's preferred film category.
 
 -- Creates a new table that shows all rentals by customer id, etc.
 DROP TABLE IF EXISTS customer_rental_categories;
@@ -21,8 +38,9 @@ CREATE TABLE customer_rental_categories AS
 			cat.name;
 
 -- TO VIEW CUSTOMER RENTAL CATEGORIES TABLE
--- SELECT * FROM customer_rental_categories;
+SELECT * FROM customer_rental_categories;
 
+-- We use customer_rental_categories to find the preferred film category for each customer
 -- Creates a table with each customer's id and their most commonly rented movie category.
 DROP TABLE IF EXISTS preferred_category;
 CREATE TABLE preferred_category AS
@@ -33,7 +51,7 @@ CREATE TABLE preferred_category AS
 			customer_id;
 		
 -- TO VIEW PREFERRED CATEGORIES TABLE
--- SELECT * FROM preferred_category;
+SELECT * FROM preferred_category;
 
 ---------
 -- B1. --
@@ -47,11 +65,11 @@ CREATE TABLE summary_report(
 	last_name varchar(45),
 	email varchar(50),
 	preferred_category varchar(45),
-	active varchar(10)
+	status varchar(10)
 );
 
 -- TO VIEW EMPTY SUMMARY REPORT TABLE
--- SELECT * FROM summary_report;
+SELECT * FROM summary_report;
 
 -- ** The detailed report is created in the section below. **
 
@@ -67,7 +85,7 @@ CREATE TABLE detailed_report AS
 		c.first_name,
 		c.last_name,
 		c.email,
-		c.active,
+		c.active AS status,
 		COUNT(c.name) FILTER(WHERE name = 'Action') as "action",
 		COUNT(c.name) FILTER(WHERE name = 'Animation') as animation,
 		COUNT(c.name) FILTER(WHERE name = 'Children') as children,
@@ -120,7 +138,9 @@ ALTER TABLE detailed_report ALTER COLUMN travel TYPE int;
 ALTER TABLE detailed_report ALTER COLUMN total_rentals TYPE int;
 
 -- TO VIEW DETAILED REPORT TABLE
--- SELECT * FROM detailed_report;
+SELECT * FROM detailed_report;
+
+------------
 
 -- Data Verification:
 -- Verfies that the total rentals in the database match the total rentals in the detailed report for all customers.
@@ -152,21 +172,12 @@ SELECT customer_id, COALESCE("action",0) + COALESCE("animation",0) + COALESCE("c
 + COALESCE("travel",0) AS total_rentals_check, total_rentals 
 	FROM detailed_report;
 
--- Test Insert: This verifies that the triggers function properly by refreshing the detailed and summary reports with the new data.
--- SELECT * FROM detailed_report;
--- SELECT * FROM summary_report;
-
--- INSERT INTO rental(rental_date, inventory_id, customer_id, return_date, staff_id, last_update)
--- 	VALUES (current_timestamp, 4020, 1, current_timestamp, 2, current_timestamp)
-
--- SELECT * FROM detailed_report;
--- SELECT * FROM summary_report;
 ----------------------------------------------------
 -- D & E1. TRIGGER FUNCTIONS & DATA TRANSFORMATION --
 ----------------------------------------------------
 
 -- Refreshes/updates the summary report when new data is added to the detailed report
--- ***** TRANSFORMS THE COLUMN "ACTIVE" FROM AN INT TO A VARCHAR. 1 = ACTIVE , 0 = INACTIVE (Lines 131-136) *******
+-- ***** TRANSFORMS THE COLUMN "status" FROM AN INT TO A VARCHAR. 1 = ACTIVE , 0 = INACTIVE *******
 CREATE OR REPLACE FUNCTION summary_trigger()
 	RETURNS TRIGGER
 	LANGUAGE PLPGSQL
@@ -177,9 +188,9 @@ BEGIN
 	INSERT INTO summary_report (
 		SELECT customer_id, first_name, last_name, email, preferred_film_category,
 		CASE
-			WHEN active = 1
+			WHEN status = 1
 				THEN 'Active'
-			WHEN active = 0
+			WHEN status = 0
 				THEN 'Inactive'
 		END
 		FROM
@@ -248,7 +259,7 @@ $$;
 -- E2. TRIGGER CREATION --
 -------------------------
 
--- CREATES CUSTOMER RENTAL CATEGORIES
+-- CREATES CUSTOMER RENTAL CATEGORIES TRIGGER
 DROP TRIGGER IF EXISTS crc_table_trigger ON rental;
 
 CREATE TRIGGER crc_table_trigger
@@ -292,7 +303,7 @@ BEGIN
 		first_name,
 		last_name,
 		email,
-		active,
+		status,
 		"action",
 		animation,
 		children,
@@ -353,8 +364,36 @@ END;
 $$;
 
 -- EXECUTE TO REFRESH REPORTS
--- CALL refresh_reports();
+CALL refresh_reports();
 
--- SELECT * FROM detailed_report;
--- SELECT * FROM summary_report;
+SELECT * FROM detailed_report;
+SELECT * FROM summary_report;
 
+-- TESTING --
+-- Test Insert: This verifies that the triggers function properly by refreshing the detailed and summary reports with the new data.
+
+-- Sports movie insert
+INSERT INTO rental(rental_date, inventory_id, customer_id, return_date, staff_id, last_update)
+	VALUES (current_timestamp, 4020, 1, current_timestamp, 2, current_timestamp)
+	
+-- Classic movie insert
+INSERT INTO rental(rental_date, inventory_id, customer_id, return_date, staff_id, last_update)
+	VALUES (current_timestamp, 824, 1, current_timestamp, 2, current_timestamp)
+	
+-- HELPER QUERY: Displays all rentals by customer id with rental id 
+-- SELECT c.customer_id, c.first_name, c.last_name, c.email, cat.name, c.active, i.inventory_id
+-- 	FROM 
+-- 		customer c 
+-- 	JOIN rental r 
+-- 		ON c.customer_id = r.customer_id 
+-- 	JOIN inventory i
+-- 		ON r.inventory_id = i.inventory_id
+-- 	JOIN film f
+-- 		ON i.film_id = f.film_id
+-- 	JOIN film_category fc
+-- 		ON f.film_id = fc.film_id
+-- 	JOIN category cat
+-- 		ON fc.category_id = cat.category_id
+-- 	ORDER BY 
+-- 		cat.name
+		
